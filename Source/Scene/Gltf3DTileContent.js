@@ -18,7 +18,8 @@ import Color from "../Core/Color.js";
 import defaultValue from "../Core/defaultValue.js";
 import GltfFeatureMetadataCache from "./GltfFeatureMetadataCache.js";
 import GltfFeatureMetadata from "./GltfFeatureMetadata.js";
-import GltfFeaturePropertyElementType from "./GltfFeaturePropertyElementType.js";
+import GltfFeaturePropertyComponentType from "./GltfFeaturePropertyComponentType.js";
+import GltfFeaturePropertyType from "./GltfFeaturePropertyType.js";
 
 /**
  * Represents the contents of a glTF or glb tile in a {@link https://github.com/CesiumGS/3d-tiles/tree/master/specification|3D Tiles} tileset.
@@ -231,9 +232,39 @@ function createBatchTableFromFeatureMetadata(content, featureTable) {
   for (var id in properties) {
     if (properties.hasOwnProperty(id)) {
       var property = properties[id];
-      var elementType = property.featureClass.elementType;
-      if (elementType === GltfFeaturePropertyElementType.STRING) {
-        batchTableJson[id] = property.getJsonValues();
+      var propertyDefinition = property.propertyDefinition;
+      var type = propertyDefinition.type;
+      var componentType = type;
+      var componentCount = 1;
+      var batchTableBinaryType = "SCALAR";
+      if (type === GltfFeaturePropertyType.ARRAY) {
+        componentCount = propertyDefinition.componentCount;
+        componentType = propertyDefinition.componentType;
+        if (componentCount === 2) {
+          batchTableBinaryType = "VEC2";
+        } else if (componentCount === 3) {
+          batchTableBinaryType = "VEC3";
+        } else if (componentType === 4) {
+          batchTableBinaryType = "VEC4";
+        }
+      }
+
+      var componentDatatype = GltfFeaturePropertyComponentType.getComponentDatatype(
+        componentType
+      );
+      var typedArray = property._bufferViewTypedArray;
+
+      if (defined(componentDatatype) && defined(typedArray)) {
+        batchTableJson[id] = {
+          byteOffset: typedArray.byteOffset,
+          componentType: ComponentDatatype.getName(componentDatatype),
+          type: batchTableBinaryType,
+        };
+        if (!defined(batchTableBinary)) {
+          batchTableBinary = new Uint8Array(typedArray.buffer);
+        }
+      } else {
+        //batchTableJson[id] = property.getJsonValues();
       }
     }
   }
@@ -292,6 +323,7 @@ function initializeFeatureMetadata(content, gltf, resource, extension) {
   var addFeatureIdTextureToGeneratedShaders = false;
   var addFeatureIdToGeneratedShaders = false;
   var featureIdTextureInfo;
+  var batchTable;
 
   var featureMetadata = new GltfFeatureMetadata({
     gltf: gltf,
@@ -300,19 +332,22 @@ function initializeFeatureMetadata(content, gltf, resource, extension) {
       basePath: resource,
     }),
   });
-  var featureTable = featureMetadata.featureTables[0];
-  var metadataPrimitive = featureMetadata.primitives[0];
-  var featureTextureMapping = metadataPrimitive.featureTextureMappings[0];
-  var featureAttributeMapping = metadataPrimitive.featureAttributeMappings[0];
 
-  if (defined(featureTextureMapping)) {
+  var featureTables = featureMetadata.featureTables;
+  var featureTable = featureTables[Object.keys(featureTables)[0]];
+  var metadataPrimitive = featureMetadata.primitives[0];
+  var featureIdTexture = metadataPrimitive.featureIdTextures[0];
+  var featureIdAttribute = metadataPrimitive.featureIdAttributes[0];
+
+  if (defined(featureIdTexture)) {
     addFeatureIdTextureToGeneratedShaders = true;
-    featureIdTextureInfo = featureTextureMapping._featureIds.textureInfo;
-  } else if (defined(featureAttributeMapping)) {
+    featureIdTextureInfo = featureIdTexture._featureIds.textureInfo;
+    batchTable = createBatchTableFromFeatureMetadata(content, featureTable);
+  } else if (defined(featureIdAttribute)) {
     addFeatureIdToGeneratedShaders = true;
+    batchTable = createBatchTableFromFeatureMetadata(content, featureTable);
   }
 
-  var batchTable = createBatchTableFromFeatureMetadata(content, featureTable);
   return {
     batchTable: batchTable,
     featureIdTextureInfo: featureIdTextureInfo,

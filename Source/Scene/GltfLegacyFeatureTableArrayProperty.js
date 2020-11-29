@@ -66,7 +66,7 @@ function GltfLegacyFeatureTableArrayProperty(options) {
     readyPromise = when.resolve(this);
   }
 
-  // Clone so that this object doesn't hold on to a reference to the gltf JSON
+  // Clone so that this object doesn't hold on to a reference to the glTF JSON
   var values = clone(array.values, true);
   var extras = clone(property.extras, true);
 

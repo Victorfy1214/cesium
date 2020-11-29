@@ -11,6 +11,7 @@
         ".project": true,
         "launches": true
     },
+    "editor.rulers": [80],
     "search.exclude": {
         "Build": true,
         "node_modules": true,
