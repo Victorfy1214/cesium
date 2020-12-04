@@ -26,6 +26,8 @@ import AutoExposure from "./AutoExposure.js";
 import PostProcessStage from "./PostProcessStage.js";
 import PostProcessStageComposite from "./PostProcessStageComposite.js";
 import PostProcessStageSampleMode from "./PostProcessStageSampleMode.js";
+import Snow from "../Shaders/PostProcessStages/Snow.js";
+import Rain from "../Shaders/PostProcessStages/Rain.js";
 
 /**
  * Contains functions for creating common post-process stages.
@@ -846,6 +848,21 @@ PostProcessStageLibrary.createLensFlareStage = function () {
       dirtAmount: 0.4,
       earthRadius: Ellipsoid.WGS84.maximumRadius,
     },
+  });
+};
+
+/**自定义添加雪**/
+PostProcessStageLibrary.createSnowStage = function () {
+  return new PostProcessStage({
+    name: "czm_snow",
+    fragmentShader: Snow,
+  });
+};
+/**自定义添加雨**/
+PostProcessStageLibrary.createRainStage = function () {
+  return new PostProcessStage({
+    name: "czm_rain",
+    fragmentShader: Rain,
   });
 };
 export default PostProcessStageLibrary;
